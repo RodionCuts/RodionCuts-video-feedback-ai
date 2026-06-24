@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Feedback AI — RodionCuts</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #c8f135;
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --muted: #666;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .header .logo {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .header p {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 16px;
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 44px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag {
+    border-color: var(--accent);
+    background: rgba(200, 241, 53, 0.03);
+  }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .upload-zone .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .upload-zone .filename {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .opt { display: flex; flex-direction: column; gap: 6px; }
+  .opt.full { grid-column: 1 / -1; }
+  .opt label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 76px; }
+
+  .btn {
+    width: 100%;
+    max-width: 680px;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover:not(:disabled) { background: #d4f54a; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* Progress */
+  .progress-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: none;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .progress-label span:last-child { color: var(--accent); }
+  .progress-track {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.4s ease;
+    border-radius: 2px;
+  }
+
+  /* Frames */
+  .frames-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: none;
+  }
+  .frames-card h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .frames-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .frame-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+    aspect-ratio: 9/16;
+  }
+  .frame-wrap.landscape { aspect-ratio: 16/9; }
+  .frame-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .frame-num {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+
+  /* Result */
+  .result-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: none;
+  }
+  .result-card h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .result-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #ccc;
+    white-space: pre-wrap;
+  }
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--accent);
+    animation: blink 0.8s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .error { color: #ff6b6b; }
+
+  video, canvas { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">RodionCuts</div>
+  <h1>Video Feedback AI</h1>
+  <p>Загрузи видео — получи честный фидбек по монтажу</p>
+</div>
+
+<div class="card">
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="video/*">
+    <span class="upload-icon">🎬</span>
+    <div id="uploadLabel">
+      <strong style="color:#fff">Выбери видео</strong> или перетащи сюда
+    </div>
+    <div class="hint">MP4, MOV — до ~300MB</div>
+  </div>
+
+  <div class="options">
+    <div class="opt">
+      <label>Платформа</label>
+      <select id="platform">
+        <option value="Reels / TikTok / Shorts (вертикальное видео 9:16)">Reels / TikTok / Shorts</option>
+        <option value="YouTube (горизонтальное видео 16:9)">YouTube горизонталь</option>
+        <option value="любая платформа">Любая</option>
+      </select>
+    </div>
+    <div class="opt">
+      <label>Фокус анализа</label>
+      <select id="focus">
+        <option value="общий анализ монтажа — всё подряд">Общий анализ</option>
+        <option value="цветокоррекция и грейдинг">Цвет / грейдинг</option>
+        <option value="ритм, темп и переходы">Ритм и переходы</option>
+        <option value="типографика и титры">Типографика</option>
+        <option value="hook и структура повествования">Hook и структура</option>
+      </select>
+    </div>
+    <div class="opt full">
+      <label>Контекст (необязательно)</label>
+      <textarea id="context" placeholder="Для кого видео? Что пробовал улучшить? Что смущает?"></textarea>
+    </div>
+  </div>
+</div>
+
+<button class="btn" id="analyzeBtn" disabled>Анализировать видео</button>
+
+<div class="progress-card" id="progressCard">
+  <div class="progress-label">
+    <span id="progressLabel">Загружаю видео...</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+
+<div class="frames-card" id="framesCard">
+  <h3>Извлечённые кадры</h3>
+  <div class="frames-grid" id="framesGrid"></div>
+</div>
+
+<div class="result-card" id="resultCard">
+  <h3>Фидбек по монтажу</h3>
+  <div class="result-text" id="resultText"></div>
+</div>
+
+<video id="video" playsinline></video>
+<canvas id="canvas"></canvas>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const uploadLabel = document.getElementById('uploadLabel');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const progressCard = document.getElementById('progressCard');
+const progressLabel = document.getElementById('progressLabel');
+const progressPct = document.getElementById('progressPct');
+const progressFill = document.getElementById('progressFill');
+const framesCard = document.getElementById('framesCard');
+const framesGrid = document.getElementById('framesGrid');
+const resultCard = document.getElementById('resultCard');
+const resultText = document.getElementById('resultText');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let videoFile = null;
+let isLandscape = false;
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('video/')) setFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  videoFile = f;
+  uploadLabel.innerHTML = `<span class="filename">✓ ${f.name}</span>`;
+  analyzeBtn.disabled = false;
+}
+
+function setProgress(pct, label) {
+  progressFill.style.width = pct + '%';
+  progressPct.textContent = pct + '%';
+  if (label) progressLabel.textContent = label;
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!videoFile) return;
+  analyzeBtn.disabled = true;
+  resultCard.style.display = 'none';
+  framesCard.style.display = 'none';
+  framesGrid.innerHTML = '';
+  resultText.innerHTML = '';
+  progressCard.style.display = 'block';
+  setProgress(5, 'Загружаю видео...');
+
+  try {
+    const frames = await extractFrames(videoFile);
+
+    // Show frames
+    framesCard.style.display = 'block';
+    frames.forEach((b64, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'frame-wrap' + (isLandscape ? ' landscape' : '');
+      const img = document.createElement('img');
+      img.src = 'data:image/jpeg;base64,' + b64;
+      const num = document.createElement('div');
+      num.className = 'frame-num';
+      num.textContent = i + 1;
+      wrap.appendChild(img);
+      wrap.appendChild(num);
+      framesGrid.appendChild(wrap);
+    });
+
+    setProgress(65, 'Отправляю в AI...');
+    resultCard.style.display = 'block';
+    resultText.innerHTML = '<span class="cursor"></span>';
+
+    await streamAnalysis(frames);
+
+  } catch (err) {
+    progressCard.style.display = 'none';
+    resultCard.style.display = 'block';
+    resultText.innerHTML = `<span class="error">Ошибка: ${err.message}</span>`;
+  } finally {
+    analyzeBtn.disabled = false;
+    progressCard.style.display = 'none';
+  }
+});
+
+function extractFrames(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+
+    video.addEventListener('loadedmetadata', async () => {
+      const dur = video.duration;
+      isLandscape = video.videoWidth > video.videoHeight;
+      const n = Math.min(8, Math.max(5, Math.floor(dur / 2)));
+      const times = [0.3];
+      for (let i = 1; i < n - 1; i++) times.push((dur / (n - 1)) * i);
+      times.push(dur - 0.5);
+
+      const frames = [];
+      for (let i = 0; i < times.length; i++) {
+        const f = await captureAt(times[i]);
+        frames.push(f);
+        setProgress(5 + Math.round((i + 1) / times.length * 55), `Извлекаю кадр ${i + 1} из ${times.length}...`);
+      }
+      URL.revokeObjectURL(url);
+      resolve(frames);
+    }, { once: true });
+
+    video.addEventListener('error', () => reject(new Error('Не удалось загрузить видео')), { once: true });
+  });
+}
+
+function captureAt(time) {
+  return new Promise(resolve => {
+    const handler = () => {
+      video.removeEventListener('seeked', handler);
+      const maxW = 480;
+      const scale = Math.min(1, maxW / video.videoWidth);
+      const w = Math.round(video.videoWidth * scale);
+      const h = Math.round(video.videoHeight * scale);
+      canvas.width = w; canvas.height = h;
+      ctx.drawImage(video, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    video.addEventListener('seeked', handler);
+    video.currentTime = time;
+  });
+}
+
+async function streamAnalysis(frames) {
+  const platform = document.getElementById('platform').value;
+  const focus = document.getElementById('focus').value;
+  const context = document.getElementById('context').value;
+
+  const content = [];
+  frames.forEach((b64, i) => {
+    content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
+    content.push({ type: 'text', text: `[Кадр ${i + 1}/${frames.length}]` });
+  });
+
+  content.push({ type: 'text', text: `Ты — опытный видеомонтажёр и ментор по short-form контенту. Перед тобой ${frames.length} кадров из смонтированного видео.
+
+Платформа: ${platform}
+Фокус анализа: ${focus}${context ? `\nКонтекст от автора: ${context}` : ''}
+
+Дай детальный честный фидбек на русском языке. Используй эту структуру:
+
+🎯 ПЕРВОЕ ВПЕЧАТЛЕНИЕ
+Что бросается в глаза сразу? Цепляет ли первый кадр?
+
+✅ ЧТО РАБОТАЕТ
+Конкретно что сделано хорошо и почему это работает.
+
+⚠️ ЧТО УЛУЧШИТЬ
+Конкретные проблемы с объяснением почему они мешают.
+
+🔧 КАК ИСПРАВИТЬ В DAVINCI RESOLVE
+Пошаговые конкретные действия для каждой проблемы.
+
+📊 ОЦЕНКА
+Визуал: X/10
+Цвет: X/10
+Структура: X/10
+Общая: X/10
+
+Будь конкретным и прямым. Автор хочет расти.` });
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      stream: true,
+      messages: [{ role: 'user', content }]
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error?.message || 'API error ' + resp.status);
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = '';
+  resultText.innerHTML = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split('\n');
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+          accumulated += parsed.delta.text;
+          resultText.innerHTML = escapeHtml(accumulated) + '<span class="cursor"></span>';
+          resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      } catch {}
+    }
+  }
+  resultText.innerHTML = escapeHtml(accumulated);
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
